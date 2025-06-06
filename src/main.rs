@@ -60,11 +60,14 @@ If --all is not specified, the file will be saved as <output>.ico
     force: bool,
 }
 
-fn core(args: ToIconArgs) {
+/// # Returns
+/// - `bool`: `true` if everything went well, `false` otherwise.
+fn core(args: ToIconArgs) -> bool {
     let image_file = path::Path::new(&args.image);
+    println!("Processing: {}", image_file.display());
     if !image_file.exists() {
         eprintln!("Error: The image file '{}' does not exist.", args.image);
-        return;
+        return false;
     }
 
     let image_name = image_file
@@ -77,7 +80,7 @@ fn core(args: ToIconArgs) {
         Ok(img) => img,
         Err(e) => {
             eprintln!("Error: Failed to open image file '{}': {}", args.image, e);
-            return;
+            return false;
         }
     };
 
@@ -95,7 +98,7 @@ fn core(args: ToIconArgs) {
                     eprintln!("Error: Failed to decode image file '{}': {}", args.image, e);
                 }
             }
-            return;
+            return false;
         }
     };
 
@@ -105,8 +108,7 @@ fn core(args: ToIconArgs) {
     if !args.all {
         let save_path = format!("{output}.ico");
         let save_path = path::Path::new(&save_path);
-        save_icon(&img, save_path, args.size.into(), args.force);
-        return;
+        return save_icon(&img, save_path, args.size.into(), args.force);
     }
 
     let output_dir = format!("{output}_ico");
@@ -118,28 +120,34 @@ fn core(args: ToIconArgs) {
             output_dir.display(),
             e
         );
-        return;
+        return false;
     }
+
+    let mut ok = true;
 
     let sizes = [16, 24, 32, 48, 64, 128, 256];
     for size in sizes {
         let save_path = output_dir.join(format!("{output}_{size}.ico"));
-        save_icon(&img, &save_path, size, args.force);
+        ok = save_icon(&img, &save_path, size, args.force) && ok;
 
         if size == args.size.into() {
             let save_path = output_dir.join(format!("{output}.ico"));
-            save_icon(&img, &save_path, size, args.force);
+            ok = save_icon(&img, &save_path, size, args.force) && ok;
         }
     }
+
+    return ok;
 }
 
-fn save_icon(img: &image::DynamicImage, path: &path::Path, size: u32, force: bool) {
+/// # Returns
+/// - `bool`: `true` if the icon was saved successfully, `false` otherwise.
+fn save_icon(img: &image::DynamicImage, path: &path::Path, size: u32, force: bool) -> bool {
     if path.exists() && !force {
         eprintln!(
             "Warning: File '{}' already exists. Use --force to overwrite.",
             path.display()
         );
-        return;
+        return false;
     }
 
     let img = if img.dimensions() == (size, size) {
@@ -148,16 +156,31 @@ fn save_icon(img: &image::DynamicImage, path: &path::Path, size: u32, force: boo
         &img.resize_exact(size, size, image::imageops::FilterType::Lanczos3)
     };
 
-    img.save(path).unwrap_or_else(|e| {
-        eprintln!("Error: Failed to save '{}': {}", size, e);
-    });
+    println!(
+        "Saving icon to: '{}' with size {}x{}",
+        path.display(),
+        size,
+        size
+    );
+
+    if let Err(e) = img.save(path) {
+        eprintln!("Error: Failed to save '{}': {}", path.display(), e);
+        false
+    } else {
+        true
+    }
 }
 
 fn main() {
-    if let Ok(args) = ToIconArgs::try_parse() {
-        core(args);
+    let ok = if let Ok(args) = ToIconArgs::try_parse() {
+        core(args)
     } else {
         _ = ToIconArgs::command().print_help();
+        false
+    };
+
+    if ok {
+        return;
     }
 
     println!("\nPress Enter or wait 3 seconds to exit...");
