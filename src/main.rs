@@ -1,6 +1,7 @@
 use std::{
     fs::{self},
     path,
+    sync::Arc,
 };
 
 use clap::{CommandFactory, Parser};
@@ -123,20 +124,29 @@ fn core(args: ToIconArgs) -> bool {
         return false;
     }
 
-    let mut ok = true;
+    let img = Arc::new(img);
+
+    let mut handles = vec![];
+
+    {
+        let save_path = output_dir.join(format!("{output}.ico"));
+        let img_clone = Arc::clone(&img);
+        let handle =
+            thread::spawn(move || save_icon(&*img_clone, &save_path, args.size.into(), args.force));
+        handles.push(handle);
+    }
 
     let sizes = [16, 24, 32, 48, 64, 128, 256];
     for size in sizes {
         let save_path = output_dir.join(format!("{output}_{size}.ico"));
-        ok = save_icon(&img, &save_path, size, args.force) && ok;
-
-        if size == args.size.into() {
-            let save_path = output_dir.join(format!("{output}.ico"));
-            ok = save_icon(&img, &save_path, size, args.force) && ok;
-        }
+        let img_clone = Arc::clone(&img);
+        let handle = thread::spawn(move || save_icon(&*img_clone, &save_path, size, args.force));
+        handles.push(handle);
     }
 
-    return ok;
+    handles
+        .into_iter()
+        .fold(true, |acc, handle| handle.join().unwrap_or(false) && acc)
 }
 
 /// # Returns
