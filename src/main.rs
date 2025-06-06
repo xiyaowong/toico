@@ -110,43 +110,47 @@ fn core(args: ToIconArgs) {
     }
 
     let output_dir = format!("{output}_ico");
+    let output_dir = path::Path::new(&output_dir);
 
     if let Err(e) = fs::create_dir_all(&output_dir) {
         eprintln!(
             "Error: Failed to create output directory '{}': {}",
-            output_dir, e
+            output_dir.display(),
+            e
         );
         return;
     }
 
     let sizes = [16, 24, 32, 48, 64, 128, 256];
     for size in sizes {
-        let save_path = path::Path::new(&output_dir).join(format!("{output}_{size}.ico"));
+        let save_path = output_dir.join(format!("{output}_{size}.ico"));
         save_icon(&img, &save_path, size, args.force);
 
         if size == args.size.into() {
-            let save_path = path::Path::new(&output_dir).join(format!("{output}.ico"));
+            let save_path = output_dir.join(format!("{output}.ico"));
             save_icon(&img, &save_path, size, args.force);
         }
     }
 }
 
 fn save_icon(img: &image::DynamicImage, path: &path::Path, size: u32, force: bool) {
-    let img = match img.dimensions() {
-        (w, h) if w == size && h == size => img.clone(),
-        _ => img.resize_exact(size, size, image::imageops::FilterType::Lanczos3),
-    };
-
     if path.exists() && !force {
         eprintln!(
             "Warning: File '{}' already exists. Use --force to overwrite.",
             path.display()
         );
-    } else {
-        img.save(path).unwrap_or_else(|e| {
-            eprintln!("Error: Failed to save '{}': {}", size, e);
-        });
+        return;
     }
+
+    let img = if img.dimensions() == (size, size) {
+        img
+    } else {
+        &img.resize_exact(size, size, image::imageops::FilterType::Lanczos3)
+    };
+
+    img.save(path).unwrap_or_else(|e| {
+        eprintln!("Error: Failed to save '{}': {}", size, e);
+    });
 }
 
 fn main() {
