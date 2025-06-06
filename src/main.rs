@@ -182,6 +182,11 @@ fn save_icon(img: &image::DynamicImage, path: &path::Path, size: u32, force: boo
 }
 
 fn main() {
+    if std::env::args().any(|arg| arg == "-V" || arg == "--version") {
+        println!("{}", ToIconArgs::command().get_version().unwrap());
+        return;
+    }
+
     let ok = if let Ok(args) = ToIconArgs::try_parse() {
         core(args)
     } else {
