@@ -6,11 +6,7 @@ use std::{
 
 use clap::{CommandFactory, Parser};
 use image::{GenericImageView, ImageReader};
-use std::{
-    io::{self, Read},
-    thread,
-    time::Duration,
-};
+use std::thread;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -198,22 +194,22 @@ fn main() {
         return;
     }
 
-    println!("\nPress Enter or wait 3 seconds to exit...");
+    // println!("\nPress Enter or wait 3 seconds to exit...");
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    // let (tx, rx) = std::sync::mpsc::channel();
 
-    let tx1 = tx.clone();
-    thread::spawn(move || {
-        thread::sleep(Duration::from_secs(3));
-        _ = tx1.send(true);
-    });
+    // let tx1 = tx.clone();
+    // thread::spawn(move || {
+    //     thread::sleep(Duration::from_secs(3));
+    //     _ = tx1.send(true);
+    // });
 
-    thread::spawn(move || {
-        let mut buf = [0u8; 1];
-        if let Ok(_) = io::stdin().read(&mut buf) {
-            _ = tx.send(true);
-        }
-    });
+    // thread::spawn(move || {
+    //     let mut buf = [0u8; 1];
+    //     if let Ok(_) = io::stdin().read(&mut buf) {
+    //         _ = tx.send(true);
+    //     }
+    // });
 
-    _ = rx.recv();
+    // _ = rx.recv();
 }
